@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Send Location to Heroku</title>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY"></script> <!-- Replace with your Google Maps API Key -->
 </head>
 <body>
     <h1>Location Sender</h1>
@@ -27,25 +28,43 @@
 
             console.log("Latitude: " + latitude + ", Longitude: " + longitude);
 
-            // Send the location data to the Heroku backend using a POST request
-            fetch('https://guarded-sands-36430-2d7317f5f1f2.herokuapp.com/save-location', {  // Replace with your actual Heroku URL
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    latitude: latitude,
-                    longitude: longitude
-                })
-            })
-            .then(response => response.text())
+            // Call Google Maps Geocoding API to get address from latitude and longitude
+            const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=YOUR_GOOGLE_MAPS_API_KEY`; // Replace with your API key
+
+            fetch(geocodeUrl)
+            .then(response => response.json())
             .then(data => {
-                console.log('Success:', data);
-                alert('Location sent successfully to Heroku!');
+                if (data.status === 'OK' && data.results.length > 0) {
+                    const address = data.results[0].formatted_address;
+                    console.log("Address: " + address);
+
+                    // Send the address and coordinates to the Heroku backend using a POST request
+                    fetch('https://guarded-sands-36430-2d7317f5f1f2.herokuapp.com/save-location', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            latitude: latitude,
+                            longitude: longitude,
+                            address: address  // Send the address as well
+                        })
+                    })
+                    .then(response => response.text())
+                    .then(data => {
+                        console.log('Success:', data);
+                        alert('Location and address sent successfully to Heroku!');
+                    })
+                    .catch((error) => {
+                        console.error('Error:', error);
+                        alert('Failed to send location data to Heroku.');
+                    });
+                } else {
+                    alert("Unable to get address from Google Maps API.");
+                }
             })
             .catch((error) => {
-                console.error('Error:', error);
-                alert('Failed to send location data to Heroku.');
+                console.error('Error with Geocoding API:', error);
             });
         }
 
