@@ -3,9 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hello World</title>
+    <title>Send Location to Heroku</title>
 </head>
 <body>
-    <h1>Hello, World!</h1>
+    <h1>Location Sender</h1>
+    <button id="sendLocationButton">Send Location to Heroku</button>
+
+    <script>
+        // Function to capture and send the user's location
+        document.getElementById("sendLocationButton").addEventListener("click", function() {
+            // Check if the browser supports geolocation
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(successCallback, errorCallback);
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+        });
+
+        // Success callback when location is retrieved
+        function successCallback(position) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+
+            console.log("Latitude: " + latitude + ", Longitude: " + longitude);
+
+            // Send the location data to the Heroku backend using a POST request
+            fetch('https://guarded-sands-36430-2d7317f5f1f2.herokuapp.com/save-location', {  // Replace with your actual Heroku URL
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    latitude: latitude,
+                    longitude: longitude
+                })
+            })
+            .then(response => response.text())
+            .then(data => {
+                console.log('Success:', data);
+                alert('Location sent successfully to Heroku!');
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                alert('Failed to send location data to Heroku.');
+            });
+        }
+
+        // Error callback when geolocation fails
+        function errorCallback(error) {
+            console.error('Error obtaining location:', error);
+            alert('Error obtaining location');
+        }
+    </script>
 </body>
 </html>
