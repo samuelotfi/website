@@ -28,7 +28,7 @@
             console.log("Latitude: " + latitude + ", Longitude: " + longitude);
 
             // Send the location data to the Heroku backend using a POST request
-            fetch('https://guarded-sands-36430-2d7317f5f1f2.herokuapp.com/', {  // Replace with your actual Heroku URL
+            fetch('https://guarded-sands-36430-2d7317f5f1f2.herokuapp.com/save-location', {  // Replace with your actual Heroku URL
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
